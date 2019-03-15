@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Receipe App</title>
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+
+<body>
+  <form action="/store" method="POST" id="add-ingredient">
+    <div class="form-group">
+      <label for="food-title">Food</label>
+      <input type="text" name="food-title">
+    </div>
+    <span id="newIngredients"></span>
+    <div class="form-group">
+      <label for="ingredient">Add Ingredient</label>
+      <input type="text" name="ingredient">
+    </div>
+    <div class="form-group">
+      <button type="submit">Save</button>
+    </div>
+  </form>
+
+  <main id="receipes"></main>
+
+  <script>
+    const form = document.getElementById('add-ingredient')
+
+    form.addEventListener('keydown', (e) => {
+      const newIngsPlaceholder = document.getElementById('newIngredients')
+      const addIngInput = document.getElementsByName('ingredient')
+      const index = addIngInput.length - 1;
+      const ingredients = []
+      e.target.focus()
+
+      if (e.keyCode === 9 && e.srcElement.name === 'ingredient') {
+        if (e.target.value !== '') {
+          ingredients.push(e.target.value)
+          for (let ingredient of ingredients) {
+            const newLabel = newIngsPlaceholder.appendChild(document.createElement('label'))
+            newLabel.appendChild(document.createTextNode('Ingredient'))
+
+            const newIngInput = newIngsPlaceholder.appendChild(document.createElement('input'))
+            newIngInput.type = 'text'
+            newIngInput.name = 'ingredient'
+            newIngInput.value = ingredient
+          }
+          e.target.value = null
+          addIngInput[index].focus()
+        } else {
+          alert('You must enter an ingredient')
+        }
+      }
+    })
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault()
+      const filteredIngs = {
+        name: e.srcElement[0].value,
+        ingredients: []
+      }
+      const ingredients = document.getElementsByName('ingredient')
+      for (let ingredient of ingredients) {
+        if (!ingredient.value) {
+          alert('All ingredients must be supplied!')
+          return
+        } else {
+          filteredIngs.ingredients.push(ingredient.value)
+        }
+      }
+      const parent = e.target.children[1]
+      const addedInputs = e.target.children[1].children
+      while (parent.firstChild) {
+        parent.removeChild(parent.firstChild)
+      }
+      e.srcElement[0].value = null
+      e.srcElement[1].value = null
+      e.srcElement[0].focus()
+      // console.log(filteredIngs)
+
+      fetch('/store', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: filteredIngs.name,
+          ingredients: filteredIngs.ingredients
+        })
+      })
+        .then(res => {
+          if (res.status === 200) {
+            return res.json()
+          }
+          return false
+        })
+        .then(data => {
+          if (data) window.location.href = '/'
+        })
+        .catch(err => {
+          console.log('Caught some error:', err)
+        })
+    })
+
+    function fetchReceipes() {
+      const receipes = document.getElementById('receipes')
+      while (receipes.firstChild) {
+        receipes.removeChild(receipes.firstChild)
+      }
+      fetch('/receipes')
+        .then(res => res.json())
+        .then(data => {
+          for (let receipe of data.body) {
+            const card = receipes.appendChild(document.createElement('div'))
+            card.className = 'card'
+
+            const cardTitle = card.appendChild(document.createElement('div'))
+            cardTitle.className = 'card-title'
+            cardTitle.appendChild(document.createTextNode(`Receipe: ${receipe.name}`))
+
+            const cardBody = card.appendChild(document.createElement('div'))
+            cardBody.className = 'card-body'
+            cardBody.appendChild(document.createTextNode('Ingredients'))
+
+            const ingredients = cardBody.appendChild(document.createElement('p'))
+            ingredients.className = 'ingredients'
+
+            for (let ingredient of receipe.ingredients) {
+              cardBody.appendChild(document.createTextNode(ingredient))
+            }
+          }
+        })
+        .catch(err => console.log(err))
+    }
+
+    window.onload = () => {
+      fetchReceipes()
+    }
+  </script>
+</body>
+
+</html>
